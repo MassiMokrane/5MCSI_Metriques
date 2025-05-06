@@ -38,7 +38,7 @@ def extract_minutes(date_string):
         return jsonify({'minutes': minutes})
 
 @app.route("/commits/")
-def monhistogramme():
+def mescommits():
     return render_template("commits.html")
   
 if __name__ == "__main__":
