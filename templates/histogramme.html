@@ -1,51 +1,45 @@
-<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Histogramme - Températures à Tawarano</title>
+    <title>Metrique</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   </head>
   <body>
-    <h2>Histogramme des températures de Tawarano</h2>
-    <div id="histogram_chart" style="width: 900px; height: 500px;"></div>
-    
+    <div id="chart_div"></div>
     <script>
-      google.charts.load('current', { packages: ['corechart'] });
-      google.charts.setOnLoadCallback(drawHistogram);
+      google.charts.load('current', { packages: ['corechart', 'histogram'] });
+      google.charts.setOnLoadCallback(drawBackgroundColor);
 
-      function drawHistogram() {
+      function drawBackgroundColor() {
         function drawChart(data) {
+          // Convertir les données récupérées en un tableau utilisable par Google Charts
           var dataTable = new google.visualization.DataTable();
           dataTable.addColumn('string', 'Date');
-          dataTable.addColumn('number', 'Température');
-
+          dataTable.addColumn('number', 'Valeur');
           data.results.forEach(entry => {
-            const date = new Date(entry.Jour * 1000);
+            var date = new Date(entry.Jour * 1000);
             dataTable.addRow([date.toLocaleDateString(), entry.temp]);
           });
 
-          const options = {
-            title: "Histogramme des températures de Tawarano",
-            legend: { position: "none" },
-            hAxis: {
-              title: "Date"
-            },
-            vAxis: {
-              title: "Température (°C)"
-            },
-            colors: ["#00bfff"]
+          // Configurer les options du graphique en histogramme
+          var options = {
+            title: 'Évolution des températures de la ville de Tawarano',
+            legend: { position: 'none' },  // Pas de légende pour un histogramme
+            hAxis: { title: 'Date' },
+            vAxis: { title: 'Température' },
+            histogram: { bucketSize: 1 }  // Adjust bucket size as necessary
           };
 
-          const chart = new google.visualization.ColumnChart(document.getElementById("histogram_chart"));
+          var chart = new google.visualization.Histogram(document.getElementById('chart_div'));
           chart.draw(dataTable, options);
         }
 
-        fetch("/tawarano/")
+        // Récupération de données depuis notre API /tawarano/
+        fetch('/tawarano/')
           .then(response => response.json())
           .then(data => {
             drawChart(data);
-          })
-          .catch(error => console.error("Erreur de chargement des données :", error));
+          });
       }
     </script>
   </body>
