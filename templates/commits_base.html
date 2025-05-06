@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analyse des Commits</title>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fa;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    
+    h1 {
+      text-align: center;
+      color: #2a3f5f;
+      margin-bottom: 30px;
+    }
+    
+    #chart_div {
+      width: 100%;
+      height: 500px;
+      margin-bottom: 40px;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .stat-card {
+      text-align: center;
+      background-color: #f0f2f5;
+      padding: 20px;
+      border-radius: 8px;
+      min-width: 150px;
+      margin: 10px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2a3f5f;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      color: #666;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 50px;
+    }
+    
+    .error {
+      color: #e74c3c;
+      text-align: center;
+      padding: 20px;
+      background-color: #fdf2f2;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Distribution des Commits par Minute</h1>
+    
+    <div id="error" class="error">
+      Une erreur est survenue lors du chargement des données.
+    </div>
+    
+    <div id="loading" class="loading">
+      Chargement des données...
+    </div>
+    
+    <div id="chart_div"></div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="total-commits">-</div>
+        <div class="stat-label">Commits Totaux</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="unique-authors">-</div>
+        <div class="stat-label">Contributeurs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="busy-minute">-</div>
+        <div class="stat-label">Minute la Plus Active</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Charger la bibliothèque Google Charts
+    google.charts.load('current', { packages: ['corechart'] });
+    google.charts.setOnLoadCallback(initialize);
+    
+    function initialize() {
+      // URL de l'API GitHub
+      const GITHUB_API_URL = 'https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits';
+      
+      // Récupérer les données des commits
+      fetch(GITHUB_API_URL)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des données');
+          }
+          return response.json();
+        })
+        .then(commits => {
+          // Cacher l'indicateur de chargement
+          document.getElementById('loading').style.display = 'none';
+          
+          // Traiter les données pour le graphique
+          processAndDisplayData(commits);
+        })
+        .catch(error => {
+          console.error('Erreur:', error);
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('error').style.display = 'block';
+        });
+    }
+    
+    function extractMinutes(dateString) {
+      const date = new Date(dateString);
+      return date.getMinutes();
+    }
+    
+    function processAndDisplayData(commits) {
+      // Compter les commits par minute
+      const minutesCounts = {};
+      
+      commits.forEach(commit => {
+        const dateString = commit.commit.author.date;
+        const minute = extractMinutes(dateString);
+        
+        if (minutesCounts[minute]) {
+          minutesCounts[minute]++;
+        } else {
+          minutesCounts[minute] = 1;
+        }
+      });
+      
+      // Préparer les données pour Google Charts
+      const dataTable = new google.visualization.DataTable();
+      dataTable.addColumn('string', 'Minute');
+      dataTable.addColumn('number', 'Nombre de Commits');
+      
+      // Ajouter les données pour chaque minute (0-59)
+      for (let i = 0; i < 60; i++) {
+        dataTable.addRow([i.toString(), minutesCounts[i] || 0]);
+      }
+      
+      // Options du graphique
+      const options = {
+        title: 'Distribution des Commits par Minute',
+        titleTextStyle: { 
+          color: '#2a3f5f',
+          fontSize: 18 
+        },
+        backgroundColor: { fill: 'transparent' },
+        legend: { position: 'none' },
+        colors: ['#3f51b5'],
+        hAxis: {
+          title: 'Minute',
+          textStyle: { color: '#666' },
+          titleTextStyle: { color: '#333' }
+        },
+        vAxis: {
+          title: 'Nombre de Commits',
+          minValue: 0,
+          format: '0',
+          textStyle: { color: '#666' },
+          titleTextStyle: { color: '#333' }
+        },
+        animation: {
+          startup: true,
+          duration: 1000,
+          easing: 'out'
+        }
+      };
+      
+      // Créer et dessiner le graphique
+      const chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+      chart.draw(dataTable, options);
+      
+      // Mettre à jour les statistiques
+      updateStats(commits, minutesCounts);
+    }
+    
+    function updateStats(commits, minutesCounts) {
+      // Total des commits
+      document.getElementById('total-commits').textContent = commits.length;
+      
+      // Nombre d'auteurs uniques
+      const uniqueAuthors = new Set();
+      commits.forEach(commit => {
+        const author = commit.commit.author.name;
+        uniqueAuthors.add(author);
+      });
+      document.getElementById('unique-authors').textContent = uniqueAuthors.size;
+      
+      // Minute la plus active
+      let maxCommits = 0;
+      let busyMinute = 0;
+      
+      for (let minute = 0; minute < 60; minute++) {
+        const count = minutesCounts[minute] || 0;
+        if (count > maxCommits) {
+          maxCommits = count;
+          busyMinute = minute;
+        }
+      }
+      
+      document.getElementById('busy-minute').textContent = busyMinute;
+    }
+  </script>
+</body>
+</html>
