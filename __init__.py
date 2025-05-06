@@ -10,9 +10,9 @@ app = Flask(__name__)
 @app.route('/')
 def hello_world():
     return render_template('hello.html')#commit2
-@app.route("/Contact/")
+@app.route("/contact/")
 def MaPremiereAPI():
-    return render_template("Contact.html")
+    return render_template("contact.html")
   
 @app.route('/tawarano/')
 def meteo():
